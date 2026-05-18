@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>OSCE Master (Split-Flight V4.0)</title>
+    <title>OSCE Master (Split-Flight V4.1)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
     <style>
         /* --- VARIABLES --- */
@@ -105,9 +105,11 @@
         #action-btn { display: none; margin-top: 20px; font-size: 1.5rem; padding: 15px 50px; background: white; color: black; border: none; border-radius: 50px; cursor: pointer; animation: pulse 2s infinite; box-shadow: 0 0 20px rgba(0,0,0,0.5); z-index: 100; font-weight: bold; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
 
-        #top-right-tools { position: absolute; top: 20px; right: 20px; z-index: 1000; }
+        #top-right-tools { position: absolute; top: 20px; right: 20px; z-index: 1000; display: flex; gap: 10px; }
         .tool-btn { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 8px 15px; border-radius: 20px; cursor: pointer; text-transform: uppercase; font-size: 0.8rem; font-weight: bold; transition: background 0.2s; }
         .tool-btn:hover { background: rgba(255,255,255,0.3); }
+        .btn-pause-pc { background: var(--amber); color: #000; border: none; }
+        .btn-pause-pc:hover { background: #d97706; }
 
         /* 4. REMOTE & VIEWER FORMS */
         #view-remote-passcode, #view-remote-login, #view-viewer-login, #view-remote { align-items: center; justify-content: center; padding: 20px; }
@@ -144,7 +146,7 @@
             <button id="force-load-btn" onclick="forceViewerLoad()" style="display:none; padding:10px 20px; background:#444; color:white; border:none; border-radius:6px; cursor:pointer;">Force Load Dashboard</button>
         </div>
         
-        <div id="version-stamp">VERSION 4.0 | REFINED SWAP UI & ET LIFECYCLE</div>
+        <div id="version-stamp">VERSION 4.1 | PC PAUSE & CLEAN HANDOVER</div>
     </div>
 
     <div id="view-setup" class="view">
@@ -177,6 +179,7 @@
         
         <div class="main-stage" id="main-stage-bg">
             <div id="top-right-tools">
+                <button id="pause-btn-pc" class="tool-btn btn-pause-pc" onclick="togglePause()" style="display:none;">⏸ PAUSE</button>
                 <button id="pip-btn" class="tool-btn" onclick="togglePiP()">📺 Pop Out</button>
             </div>
             <div id="stage-content">
@@ -258,7 +261,7 @@
         let capacity = 12; let audioCtx = null;
         
         // DOM ELEMENTS
-        let elStatus, elTimer, elInfo, elStageBg, elActionBtn, elDynCapContainer, elDynCapInput;
+        let elStatus, elTimer, elInfo, elStageBg, elActionBtn, elDynCapContainer, elDynCapInput, elPauseBtnPc;
 
         window.onload = () => {
             elStatus = document.getElementById('status-text');
@@ -268,6 +271,7 @@
             elActionBtn = document.getElementById('action-btn');
             elDynCapContainer = document.getElementById('dynamic-capacity-container');
             elDynCapInput = document.getElementById('dyn-capacity');
+            elPauseBtnPc = document.getElementById('pause-btn-pc');
         };
 
         function forceViewerLoad() { switchView('view-run'); }
@@ -369,6 +373,8 @@
 
             schedule = [{ type: 'STANDBY', phase: 'WAIT', duration: 0, label: 'WELCOME', sub: 'WAITING TO START', colorClass: 'mode-standby' }];
 
+            if (isHost && elPauseBtnPc) elPauseBtnPc.style.display = 'none';
+
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             switchView('view-run'); currentStepIndex = 0; runStep();
         }
@@ -424,7 +430,7 @@
                 let subText = "PREPARE NEXT GROUP";
                 
                 if (isRunningET && etQueue.length === 0 && (stdF2FQueue.length > 0 || stdCalcQueue.length > 0)) {
-                    subText = "ET: MOVE TO CALCS | STD: PREPARE F2F";
+                    subText = "PREPARE STANDARD COHORT";
                 }
                 
                 schedule.push({ type: 'INTERMISSION', phase: 'PAUSE', duration: 0, label: 'INTERMISSION', sub: subText, colorClass: 'mode-intermission' });
@@ -438,12 +444,9 @@
             
             if (step.phase === 'PAUSE') {
                 if (activeF2F.length > 0 && activeF2F[0].isET) {
-                    // ET Flight just finished: move them into the Calc residency
                     etCompleted.push(...activeF2F);
                     activeF2F = [];
                 } else if (activeF2F.length > 0 && !activeF2F[0].isET) {
-                    // A Standard flight just finished. 
-                    // This means the ET students have had the entire duration to do their calcs. They are done.
                     etCompleted = [];
                 }
             }
@@ -464,12 +467,18 @@
                 } else {
                     elActionBtn.style.display = 'none'; elDynCapContainer.style.display = 'none';
                 }
+                if (elPauseBtnPc) elPauseBtnPc.style.display = 'none';
                 if(step.phase === 'PAUSE') playBeep(600, 0.5);
                 broadcastState(); return;
             }
             
             elActionBtn.style.display = 'none'; elDynCapContainer.style.display = 'none';
             targetTime = Date.now() + (step.duration * 1000); isPaused = false;
+            
+            if (isHost && elPauseBtnPc) {
+                elPauseBtnPc.style.display = 'inline-block';
+                elPauseBtnPc.innerText = isPaused ? "▶ RESUME" : "⏸ PAUSE";
+            }
             
             if(step.phase === 'STATION') playBeep(800, 0.5); 
             else if(step.phase === 'PREP') playBeep(440, 0.5);
@@ -488,7 +497,17 @@
             currentStepIndex++; runStep(); 
         }
         
-        function togglePause() { isPaused = !isPaused; if(isPaused) { pauseTimeLeft = targetTime - Date.now(); targetTime = null; } else { targetTime = Date.now() + pauseTimeLeft; } broadcastState(); }
+        function togglePause() { 
+            isPaused = !isPaused; 
+            if(isPaused) { 
+                pauseTimeLeft = targetTime - Date.now(); 
+                targetTime = null; 
+            } else { 
+                targetTime = Date.now() + pauseTimeLeft; 
+            } 
+            if (elPauseBtnPc) elPauseBtnPc.innerText = isPaused ? "▶ RESUME" : "⏸ PAUSE";
+            broadcastState(); 
+        }
         
         setInterval(() => {
             let m="00", s="00";
@@ -504,7 +523,7 @@
             else elTimer.innerText = timeStr;
         }, 100);
 
-        function finish() { targetTime = null; elStatus.innerText = "DONE"; elTimer.innerText = "00:00"; elStageBg.className = 'main-stage mode-done'; if(pipWindow) pipWindow.document.body.className = 'main-stage mode-done'; broadcastState(); elActionBtn.style.display = 'none'; elDynCapContainer.style.display = 'none'; }
+        function finish() { targetTime = null; elStatus.innerText = "DONE"; elTimer.innerText = "00:00"; elStageBg.className = 'main-stage mode-done'; if(pipWindow) pipWindow.document.body.className = 'main-stage mode-done'; broadcastState(); elActionBtn.style.display = 'none'; elDynCapContainer.style.display = 'none'; if(elPauseBtnPc) elPauseBtnPc.style.display = 'none'; }
 
         const tagList = (list, act) => list.map(s => Object.assign({}, s, {action: act}));
 
