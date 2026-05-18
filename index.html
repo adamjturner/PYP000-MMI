@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>OSCE Master (Split-Flight V4.1)</title>
+    <title>OSCE Master (Split-Flight V4.2)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
     <style>
         /* --- VARIABLES --- */
@@ -65,13 +65,31 @@
         .sidebar-right { border-right: none; border-left: 1px solid var(--border); }
         .sb-header { margin: 0; padding: 15px; text-transform: uppercase; font-size: 1rem; color: #888; border-bottom: 1px solid #333; text-align: center; background: #161616; flex-shrink: 0; letter-spacing: 1px; }
         
-        /* ZERO-SCROLL AUTO-FIT LISTS */
-        .student-list { list-style: none; padding: 6px; margin: 0; flex-grow: 1; display: flex; flex-direction: column; gap: 4px; overflow: hidden; }
-        .student-item { flex: 1; min-height: 24px; max-height: 45px; padding: 0 10px; margin: 0; background: #252525; border-radius: 4px; border-left: 5px solid #555; display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: clamp(0.75rem, 2vh, 1rem); overflow: hidden; }
-        .student-name-container { display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap; }
-        .student-name-text { overflow: hidden; text-overflow: ellipsis; }
+        /* ZERO-SCROLL AUTO-FIT LISTS (BULLETPROOFED) */
+        .student-list { 
+            list-style: none; padding: 4px; margin: 0; 
+            flex-grow: 1; display: flex; flex-direction: column; 
+            gap: 2px; overflow: hidden; height: 100%;
+        }
+        .student-item { 
+            flex: 1 1 0%; /* Ruthless vertical squashing override */
+            min-height: 0; /* Prevents text from forcing container size */
+            max-height: 45px; 
+            padding: 0 8px; margin: 0; background: #252525; border-radius: 4px; border-left: 5px solid #555; 
+            display: flex; justify-content: space-between; align-items: center; gap: 6px; 
+            font-size: clamp(0.6rem, 1.8vh, 1rem); 
+            overflow: hidden; 
+        }
+        .student-name-container { 
+            display: flex; align-items: center; gap: 6px; 
+            min-width: 0; /* Critical for ellipsis truncation inside flex */
+            flex-grow: 1; 
+        }
+        .student-name-text { 
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
+        }
         
-        .group-tag { font-size: clamp(0.6rem, 1.3vh, 0.75rem); font-weight: bold; text-transform: uppercase; padding: 2px 6px; border-radius: 3px; background: #444; color: #ddd; min-width: 45px; text-align: center; white-space: nowrap; }
+        .group-tag { font-size: clamp(0.55rem, 1.2vh, 0.75rem); font-weight: bold; text-transform: uppercase; padding: 2px 4px; border-radius: 3px; background: #444; color: #ddd; min-width: 40px; text-align: center; white-space: nowrap; flex-shrink: 0; }
         
         /* Group Colors */
         .grp-red { border-left-color: #ef4444 !important; } .grp-red .group-tag { background: #7f1d1d; color: #fecaca; }
@@ -81,7 +99,7 @@
         .grp-orange { border-left-color: #f97316 !important; } .grp-orange .group-tag { background: #7c2d12; color: #fdba74; }
         .grp-calc { border-left-color: #6b7280 !important; } .grp-calc .group-tag { background: #374151; color: #d1d5db; border: 1px solid #4b5563; }
 
-        .skip-btn { background: #ef4444; color: white; border: none; border-radius: 4px; width: 22px; height: 22px; font-size: 12px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: 0.8; flex-shrink: 0; }
+        .skip-btn { background: #ef4444; color: white; border: none; border-radius: 4px; width: 18px; height: 18px; font-size: 10px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: 0.8; flex-shrink: 0; }
         .skip-btn:hover { opacity: 1; transform: scale(1.1); }
 
         .main-stage { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; width: 100%; height: 100%; transition: background 0.5s; position: relative; overflow: hidden; }
@@ -146,7 +164,7 @@
             <button id="force-load-btn" onclick="forceViewerLoad()" style="display:none; padding:10px 20px; background:#444; color:white; border:none; border-radius:6px; cursor:pointer;">Force Load Dashboard</button>
         </div>
         
-        <div id="version-stamp">VERSION 4.1 | PC PAUSE & CLEAN HANDOVER</div>
+        <div id="version-stamp">VERSION 4.2 | ZERO-SCROLL AUTO-FIT SIDEBARS</div>
     </div>
 
     <div id="view-setup" class="view">
